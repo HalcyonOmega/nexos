@@ -1,0 +1,8 @@
+[package]
+name = "nex"
+version = "0.1.0"
+edition = "2021"
+description = "Nexos command-line interface"
+license = "MIT"
+
+[dependencies]
