@@ -1,6 +1,6 @@
 { config, inputs, ... }:
 let
-  hostname = "vm";
+  hostname = "default";
   system = "x86_64-linux";
 in
 {
@@ -9,6 +9,7 @@ in
     specialArgs = { inherit inputs; };
     modules = [
       ../../hosts/${hostname}/hardware.nix
+      ../../hosts/${hostname}/bootloader.nix
       ../../hosts/${hostname}/default.nix
     ];
   };

@@ -10,15 +10,17 @@ Default configuration installed to `/etc/nexos` on Nexos systems.
   modules/
     flake/
       systems.nix           supported platforms
-      host.nix              defines the vm host
+      host.nix              defines the default host
   hosts/
-    vm/
+    default/
       default.nix             customize the system here
       hardware.nix            generated at install time
+      bootloader.nix          generated at install time
 ```
 
-Nexos defaults (`nex`, `nh`, flakes, packages, `NEX_FLAKE`) come from
-`github:halcyonomega/nexos` through `nexos.lib.nexosSystem`.
+Nexos defaults (`nex`, `nh`, flakes, packages, `NEX_FLAKE`) come from the
+bundled `vendor/nexos` input through `nexos.lib.nexosSystem`. After install,
+point the flake at GitHub with `sudo nex flake update nexos`.
 
 ## Day to day
 
@@ -37,6 +39,6 @@ sudo nex switch
 
 ## Customize further
 
-- Edit `hosts/vm/default.nix` for hostname, users, and services.
+- Edit `hosts/default/default.nix` for hostname, users, and services.
 - Add modules under `modules/` to grow the flake with import-tree.
 - Change `hostname` in `modules/flake/host.nix` if you rename the host.

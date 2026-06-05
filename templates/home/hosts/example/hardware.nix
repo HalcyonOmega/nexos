@@ -3,8 +3,6 @@
   #   nex gen-config --show-hardware-config
   imports = [ ];
 
-  boot.loader.grub.devices = [ "nodev" ];
-
   fileSystems."/" = {
     device = "tmpfs";
     fsType = "tmpfs";

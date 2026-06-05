@@ -2,15 +2,15 @@
   description = "Nexos system configuration";
 
   inputs = {
-    nexos.url = "github:halcyonomega/nexos";
+    # Bundled on the installer ISO at /etc/nexos/vendor/nexos for offline installs.
+    # After install, switch to github with: sudo nex flake update nexos
+    nexos.url = "path:./vendor/nexos";
 
     nexpkgs.follows = "nexos/nexpkgs";
     nixpkgs.follows = "nexpkgs";
 
-    flake-parts.url = "github:hercules-ci/flake-parts";
-    flake-parts.inputs.nixpkgs-lib.follows = "nexpkgs";
-
-    import-tree.url = "github:vic/import-tree";
+    flake-parts.follows = "nexos/flake-parts";
+    import-tree.follows = "nexos/import-tree";
   };
 
   outputs =

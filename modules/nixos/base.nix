@@ -39,6 +39,8 @@
           NEX_FLAKE = cfg.flakePath;
         };
 
+        boot.loader.limine.enable = lib.mkDefault true;
+
         environment.systemPackages = with pkgs; [
           git
           vim

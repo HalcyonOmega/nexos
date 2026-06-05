@@ -64,7 +64,7 @@ The ISO currently includes:
   `nexos.lib.nexosSystem`
 - installed systems use `/etc/nexos` only; legacy `/etc/nixos` is removed at
   install time
-- hardware config is generated to `hosts/vm/hardware.nix` during install
+- hardware config is generated to `hosts/default/hardware.nix` during install
 
 ## 3. Create A Virtual Disk
 
@@ -118,11 +118,15 @@ Partition and format the VM disk:
 
 ```sh
 parted /dev/vda -- mklabel gpt
-parted /dev/vda -- mkpart root ext4 512MB -8GB
+parted /dev/vda -- mkpart boot fat32 1MiB 1GiB
+parted /dev/vda -- mkpart root ext4 1GiB -8GB
 parted /dev/vda -- mkpart swap linux-swap -8GB 100%
-mkfs.ext4 -L nexos /dev/vda1
-mkswap -L swap /dev/vda2
+mkfs.fat -F 32 -n boot /dev/vda1
+mkfs.ext4 -L nexos /dev/vda2
+mkswap -L swap /dev/vda3
 mount /dev/disk/by-label/nexos /mnt
+mkdir -p /mnt/boot
+mount /dev/disk/by-label/boot /mnt/boot
 swapon /dev/disk/by-label/swap
 ```
 
@@ -131,14 +135,20 @@ Generate hardware config and copy the starter Nexos config:
 ```sh
 nex gen-config --root /mnt
 cp -a /etc/nexos /mnt/etc/nexos
-cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hosts/vm/hardware.nix
+mkdir -p /mnt/etc/nexos/hosts/default
+cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hosts/default/hardware.nix
+root_device=$(readlink -f "$(findmnt --noheadings --output SOURCE --target /mnt | sed -n '1p')")
+boot_parent=$(lsblk --noheadings --output PKNAME "$root_device" | sed -n '1p')
+boot_device="$root_device"
+if [ -n "$boot_parent" ]; then boot_device="/dev/$boot_parent"; fi
+printf '{ lib, ... }: { boot.loader.limine.efiSupport = false; boot.loader.limine.biosSupport = true; boot.loader.limine.biosDevice = lib.mkDefault "%s"; }\n' "$boot_device" > /mnt/etc/nexos/hosts/default/bootloader.nix
 rm -rf /mnt/etc/nixos
 ```
 
 Install the system:
 
 ```sh
-nex install --flake /mnt/etc/nexos#vm
+nex install --flake /mnt/etc/nexos#default --no-write-lock-file
 ```
 
 Set the root password when prompted. The starter config also creates:

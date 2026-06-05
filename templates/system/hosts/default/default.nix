@@ -1,7 +1,7 @@
 { lib, ... }:
 
 {
-  networking.hostName = "nexos-vm";
+  networking.hostName = lib.mkDefault "nexos";
   networking.networkmanager.enable = lib.mkDefault true;
 
   users.users.nexos = {

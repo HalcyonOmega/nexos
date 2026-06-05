@@ -1,7 +1,6 @@
 # Nexos
 
-Nexos is an opinionated, NixOS-compatible distribution built on a package
-foundation exposed as `nexpkgs`.
+Nexos is designed to be a modern, streamlined, easy-to-use, but opinionated NixOS-based distribution.
 
 The current baseline intentionally keeps the Nix ecosystem compatible:
 
@@ -48,7 +47,7 @@ The Nexos ISO installs a baseline flake to `/etc/nexos` (`templates/system`):
 /etc/nexos/
   flake.nix                 flake-parts + import-tree
   modules/flake/            host and platform definitions
-  hosts/vm/                 customize default.nix; hardware.nix generated at install
+  hosts/default/            customize default.nix; generated hardware/bootloader modules
 ```
 
 Nexos defaults (`nex`, `nh`, flakes, editor tools, `NEX_FLAKE`) come from
