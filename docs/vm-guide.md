@@ -148,7 +148,8 @@ rm -rf /mnt/etc/nixos
 Install the system:
 
 ```sh
-nex install --flake /mnt/etc/nexos#default --no-write-lock-file
+nix flake lock /mnt/etc/nexos
+nex install --flake /mnt/etc/nexos#default
 ```
 
 Set the root password when prompted. The starter config also creates:
@@ -194,7 +195,7 @@ Try the short OS commands:
 
 ```sh
 nex build
-sudo nex switch
+nex switch
 ```
 
 Try package shell compatibility:

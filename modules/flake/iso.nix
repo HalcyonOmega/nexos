@@ -24,6 +24,7 @@ in
               pkgs.coreutils
               pkgs.findutils
               pkgs.gnused
+              pkgs.nix
               pkgs.nixos-install-tools
               pkgs.util-linux
             ];
@@ -48,6 +49,11 @@ in
                   cp "$root/etc/nixos/hardware-configuration.nix" "$root/etc/nexos/hosts/default/hardware.nix"
                 fi
 
+                if [[ -f "$root/etc/nixos/configuration.nix" ]]; then
+                  cp "$root/etc/nixos/configuration.nix" "$root/etc/nexos/hosts/default/installer.nix"
+                  sed -i 's|./hardware-configuration.nix|./hardware.nix|g' "$root/etc/nexos/hosts/default/installer.nix"
+                fi
+
                 root_source="$(findmnt --noheadings --output SOURCE --target "$root" | sed -n '1p' || true)"
                 root_device="$(readlink -f "$root_source" || true)"
                 boot_device=""
@@ -61,23 +67,15 @@ in
                 fi
 
                 if [[ -n "$boot_device" ]]; then
-                  cat > "$root/etc/nexos/hosts/default/bootloader.nix" <<EOF
-{ lib, ... }:
-
-{
-  boot.loader.limine.efiSupport = false;
-  boot.loader.limine.biosSupport = true;
-  boot.loader.limine.biosDevice = lib.mkDefault "$boot_device";
-}
-EOF
+                  printf '{ lib, ... }: { boot.loader.limine.efiSupport = false; boot.loader.limine.biosSupport = true; boot.loader.limine.biosDevice = lib.mkDefault "%s"; }\n' "$boot_device" > "$root/etc/nexos/hosts/default/bootloader.nix"
                 elif [[ ! -d /sys/firmware/efi ]]; then
                   echo "nexos-install: unable to determine BIOS boot disk from mounted root '$root'" >&2
                   exit 1
                 fi
 
-                rm -f "$root/etc/nexos/flake.lock"
+                nix --extra-experimental-features 'nix-command flakes' flake lock "$root/etc/nexos"
                 rm -rf "$root/etc/nixos"
-                args=("--flake" "$root/etc/nexos#default" "--no-write-lock-file" "''${args[@]}")
+                args=("--flake" "$root/etc/nexos#default" "''${args[@]}")
               fi
 
               exec ${pkgs.nixos-install-tools}/bin/nixos-install "''${args[@]}"
@@ -131,7 +129,6 @@ EOF
               calamares-nixos-extensions = prev.calamares-nixos-extensions.overrideAttrs (old: {
                 nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ final.python3 ];
                 postInstall = (old.postInstall or "") + ''
-                  sed -i '/^  - users$/d' "$out/etc/calamares/settings.conf"
                   python3 - "$out/etc/calamares/modules/partition.conf" <<'PY'
                   import pathlib
                   import sys
@@ -191,15 +188,18 @@ EOF
               cp -a /etc/nexos /mnt/etc/nexos
               mkdir -p /mnt/etc/nexos/hosts/default
               cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hosts/default/hardware.nix
+              cp /mnt/etc/nixos/configuration.nix /mnt/etc/nexos/hosts/default/installer.nix
+              sed -i 's|./hardware-configuration.nix|./hardware.nix|g' /mnt/etc/nexos/hosts/default/installer.nix
               root_device=$(readlink -f "$(findmnt --noheadings --output SOURCE --target /mnt | sed -n '1p')")
               boot_parent=$(lsblk --noheadings --output PKNAME "$root_device" | sed -n '1p')
               boot_device="$root_device"
               if [ -n "$boot_parent" ]; then boot_device="/dev/$boot_parent"; fi
               printf '{ lib, ... }: { boot.loader.limine.efiSupport = false; boot.loader.limine.biosSupport = true; boot.loader.limine.biosDevice = lib.mkDefault "%s"; }\n' "$boot_device" > /mnt/etc/nexos/hosts/default/bootloader.nix
+              nix flake lock /mnt/etc/nexos
               rm -rf /mnt/etc/nixos
-              nex install --flake /mnt/etc/nexos#default --no-write-lock-file
+              nex install --flake /mnt/etc/nexos#default
 
-            After reboot, log in as nexos / password and run: nex --help
+            After reboot, log in with the user created in the installer and run: nex --help
           '';
         }
       )
@@ -209,7 +209,8 @@ EOF
   perSystem =
     { system, ... }:
     {
-      packages = { }
+      packages =
+        { }
         // (
           if system == "x86_64-linux" then
             {
@@ -219,7 +220,8 @@ EOF
             { }
         );
 
-      checks = { }
+      checks =
+        { }
         // (
           if system == "x86_64-linux" then
             {

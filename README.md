@@ -46,16 +46,17 @@ The Nexos ISO installs a baseline flake to `/etc/nexos` (`templates/system`):
 ```text
 /etc/nexos/
   flake.nix                 flake-parts + import-tree
+  flake.lock                generated during install
   modules/flake/            host and platform definitions
-  hosts/default/            customize default.nix; generated hardware/bootloader modules
+  hosts/default/            customize default.nix; generated hardware/bootloader/installer modules
 ```
 
 Nexos defaults (`nex`, `nh`, flakes, editor tools, `NEX_FLAKE`) come from
 `github:halcyonomega/nexos` through `nexos.lib.nexosSystem`. After install:
 
 ```sh
-sudo nex edit
-sudo nex switch
+nex edit
+nex switch
 ```
 
 For a from-scratch VM walkthrough, see [Run Nexos In A VM](docs/vm-guide.md).

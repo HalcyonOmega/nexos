@@ -27,13 +27,13 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         "switch" | "boot" | "test" | "build" | "rollback" | "info" => {
-            exec_with_prefix("nh", ["os", command.as_ref()], rest)
+            exec_os_command(command.as_ref(), rest)
         }
         "pkg" | "package" => exec_package_command(rest),
         "nix" | "raw" => exec_raw_nix(rest),
         "shell" => exec_shell(rest),
-        "list" => exec_with_prefix("nh", ["os", "info"], rest),
-        "dry" | "dry-run" => exec_with_prefix("nh", ["os", "switch", "--dry"], rest),
+        "list" => exec_os_command("info", rest),
+        "dry" | "dry-run" => exec_dry_run(rest),
         "install" => exec_passthrough("nixos-install", rest),
         "gen-config" | "generate-config" => exec_passthrough("nixos-generate-config", rest),
         "option" => exec_passthrough("nixos-option", rest),
@@ -81,6 +81,40 @@ fn exec_shell(args: &[OsString]) -> ExitCode {
         shell_args.extend_from_slice(args);
         exec_passthrough("nix-shell", &shell_args)
     }
+}
+
+fn exec_os_command(command: &str, args: &[OsString]) -> ExitCode {
+    let mut os_args = vec![OsString::from("os"), OsString::from(command)];
+
+    if args.is_empty() && matches!(command, "switch" | "boot" | "test" | "build") {
+        append_default_target(&mut os_args);
+    } else {
+        os_args.extend_from_slice(args);
+    }
+
+    exec_passthrough("nh", &os_args)
+}
+
+fn exec_dry_run(args: &[OsString]) -> ExitCode {
+    let mut os_args = vec![
+        OsString::from("os"),
+        OsString::from("switch"),
+        OsString::from("--dry"),
+    ];
+
+    if args.is_empty() {
+        append_default_target(&mut os_args);
+    } else {
+        os_args.extend_from_slice(args);
+    }
+
+    exec_passthrough("nh", &os_args)
+}
+
+fn append_default_target(args: &mut Vec<OsString>) {
+    args.push(OsString::from(active_config_root()));
+    args.push(OsString::from("--hostname"));
+    args.push(OsString::from("default"));
 }
 
 fn uses_legacy_package_shell(args: &[OsString]) -> bool {
@@ -228,7 +262,7 @@ Short OS lifecycle commands:
   nex rollback [args...]    Roll back to the previous generation
   nex info                  Show system generation information
   nex list                  Alias for nex info
-  nex dry-run [args...]     Preview a switch without applying it
+  nex dry-run               Preview the default Nexos system switch
 
 Compatibility helpers:
   nex install [args...]     Install Nexos to a mounted target
