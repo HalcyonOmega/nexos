@@ -53,13 +53,93 @@ def main() -> None:
         "  ];\n\n"
     )
 
+    install_marker = (
+        "    # Write the configuration.nix file\n"
+        '    libcalamares.utils.host_env_process_output(["cp", "/dev/stdin", config], None, cfg)\n'
+    )
+    install_block = (
+        "    # NexOS: install baseline flake config under /etc/nexos\n"
+        '    nexos_live = "/etc/nexos"\n'
+        "    if os.path.isdir(nexos_live):\n"
+        "        libcalamares.utils.host_env_process_output(\n"
+        '            ["cp", "-a", nexos_live, root_mount_point + "/etc/"], None\n'
+        "        )\n"
+        "        libcalamares.utils.host_env_process_output(\n"
+        "            [\n"
+        '                "cp",\n'
+        '                root_mount_point + "/etc/nixos/hardware-configuration.nix",\n'
+        '                root_mount_point + "/etc/nexos/hosts/vm/hardware.nix",\n'
+        "            ],\n"
+        "            None,\n"
+        "        )\n"
+        "        libcalamares.utils.host_env_process_output(\n"
+        '            ["rm", "-rf", root_mount_point + "/etc/nixos"], None\n'
+        "        )\n"
+        "    else:\n"
+        "        # Write the configuration.nix file\n"
+        '        libcalamares.utils.host_env_process_output(["cp", "/dev/stdin", config], None, cfg)\n'
+    )
+
+    flake_install_marker = (
+        "    nixosInstallCmd.extend(\n"
+        "        [\n"
+        '            "nixos-install",\n'
+        '            "--no-root-passwd",\n'
+        '            "--root",\n'
+        "            root_mount_point,\n"
+        '            "--log-format",\n'
+        '            "internal-json",\n'
+        "            # Nix requires its build directory to have no\n"
+        "            # world-writable parent directories. The chroot store that\n"
+        "            # nixos-install uses will use the state dir in the chroot\n"
+        "            # for the build-dir, but the chroot is under /tmp, which\n"
+        "            # is writable. It doesn't have to be in the chroot though,\n"
+        "            # so we can just realign it with the host state dir.\n"
+        '            "--option",\n'
+        '            "build-dir",\n'
+        '            "/nix/var/nix/builds",\n'
+        "        ]\n"
+        "    )\n"
+    )
+    flake_install_block = (
+        "    nixos_install_args = [\n"
+        '        "nixos-install",\n'
+        '        "--no-root-passwd",\n'
+        '        "--root",\n'
+        "        root_mount_point,\n"
+        '        "--log-format",\n'
+        '        "internal-json",\n'
+        "        # Nix requires its build directory to have no\n"
+        "        # world-writable parent directories. The chroot store that\n"
+        "        # nixos-install uses will use the state dir in the chroot\n"
+        "        # for the build-dir, but the chroot is under /tmp, which\n"
+        "        # is writable. It doesn't have to be in the chroot though,\n"
+        "        # so we can just realign it with the host state dir.\n"
+        '        "--option",\n'
+        '        "build-dir",\n'
+        '        "/nix/var/nix/builds",\n'
+        "    ]\n"
+        "    if os.path.isdir(nexos_live):\n"
+        "        nixos_install_args[1:1] = [\n"
+        '            "--flake",\n'
+        '            root_mount_point + "/etc/nexos#vm",\n'
+        "        ]\n"
+        "    nixosInstallCmd.extend(nixos_install_args)\n"
+    )
+
     if state_marker not in text:
         raise SystemExit("NexOS generated-config template marker not found")
     if pkgs_marker not in text:
         raise SystemExit("NexOS cfgpkgs template marker not found")
+    if install_marker not in text:
+        raise SystemExit("NexOS install hook marker not found")
+    if flake_install_marker not in text:
+        raise SystemExit("NexOS flake install marker not found")
 
     text = text.replace(pkgs_marker, pkgs_block)
     text = text.replace(state_marker, nexos_block)
+    text = text.replace(install_marker, install_block)
+    text = text.replace(flake_install_marker, flake_install_block)
     path.write_text(text)
 
 

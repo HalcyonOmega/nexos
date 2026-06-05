@@ -60,10 +60,11 @@ The ISO currently includes:
 - flakes enabled
 - `/etc/nexos-release`
 - GNOME with the Calamares graphical installer
-- a starter `/etc/nexos` flake
-- installed systems include `nex` and `nh`
-- the Nexos source under `/etc/nexos/source` so installs work before the GitHub
-  repo is published
+- a baseline `/etc/nexos` flake using flake-parts, import-tree, and
+  `nexos.lib.nexosSystem`
+- installed systems use `/etc/nexos` only; legacy `/etc/nixos` is removed at
+  install time
+- hardware config is generated to `hosts/vm/hardware.nix` during install
 
 ## 3. Create A Virtual Disk
 
@@ -129,8 +130,9 @@ Generate hardware config and copy the starter Nexos config:
 
 ```sh
 nex gen-config --root /mnt
-cp -RL /etc/nexos /mnt/etc/nexos
-cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hardware-configuration.nix
+cp -a /etc/nexos /mnt/etc/nexos
+cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hosts/vm/hardware.nix
+rm -rf /mnt/etc/nixos
 ```
 
 Install the system:

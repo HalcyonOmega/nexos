@@ -1,24 +1,43 @@
 # Nexos Host Template
 
-This template is the starting point for an end-user Nexos configuration.
+Starting point for a personal Nexos configuration repository.
 
 ```sh
 nex flake init -t github:halcyonomega/nexos#home
 nex switch
 ```
 
-Nexos keeps generic `nix` commands available, but day-to-day usage should go
-through `nex`: `nex switch` and `nex build` for operating-system lifecycle,
-`nex shell cmatrix` for quick package shells, `nex pkg build` for package
-builds, and `nex flake` for flake workflows.
+## Layout
+
+```text
+flake.nix
+modules/
+  flake/
+    systems.nix
+    host.nix
+hosts/
+  example/
+    default.nix       customize here
+    hardware.nix        replace with `nex gen-config --show-hardware-config`
+```
+
+Same architecture as the `/etc/nexos` baseline installed from the Nexos ISO:
+flake-parts, import-tree, and `nexos.lib.nexosSystem`.
+
+## Commands
+
+- `nex switch` and `nex build` for system lifecycle
+- `nex shell cmatrix` for quick package shells
+- `nex pkg build` for package builds
+- `nex flake` for flake workflows
+- `nex edit` to open the active config directory
 
 The default system path is `/etc/nexos`, exported as `NEX_FLAKE` through
-`nexos.flakePath`. Change that option when you want `nex` to target a different
-configuration directory by default.
+`nexos.flakePath`. Change that option when you want `nex` to target this
+repository instead.
 
-Before `nex` is installed system-wide, bootstrap it once from the upstream flake:
+Before `nex` is installed system-wide:
 
 ```sh
 nix run github:halcyonomega/nexos#nex -- --help
-nix run github:halcyonomega/nexos#nex -- pkg build .#vm
 ```

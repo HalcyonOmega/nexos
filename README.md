@@ -40,36 +40,37 @@ Generic `nix` remains available for users who rely on it directly, but Nexos
 docs should prefer `nex` wherever the behavior is intended to be branded and
 ordinary.
 
-## End-User Template
+## Installed System Baseline
+
+The Nexos ISO installs a baseline flake to `/etc/nexos` (`templates/system`):
+
+```text
+/etc/nexos/
+  flake.nix                 flake-parts + import-tree
+  modules/flake/            host and platform definitions
+  hosts/vm/                 customize default.nix; hardware.nix generated at install
+```
+
+Nexos defaults (`nex`, `nh`, flakes, editor tools, `NEX_FLAKE`) come from
+`github:halcyonomega/nexos` through `nexos.lib.nexosSystem`. After install:
+
+```sh
+sudo nex edit
+sudo nex switch
+```
+
+For a from-scratch VM walkthrough, see [Run Nexos In A VM](docs/vm-guide.md).
+
+## Personal Configuration
 
 ```sh
 nex flake init -t github:halcyonomega/nexos#home
 nex switch
 ```
 
-The template uses:
-
-- `inputs.nexos.url = "github:halcyonomega/nexos"`
-- `inputs.nexpkgs.follows = "nexos/nexpkgs"`
-- `nexos.lib.nexosSystem`
-- `nexosConfigurations.<hostname>`
-- a compatibility alias at `nixosConfigurations.<hostname>`
-
-For a from-scratch VM walkthrough, see [Run Nexos In A VM](docs/vm-guide.md).
-
-## Config Path Tradeoffs
-
-There are three reasonable defaults:
-
-| Path model | Strengths | Weaknesses |
-| --- | --- | --- |
-| `/etc/nexos` only | Strongest distro identity, simple installer story, clean docs | Less flexible for users who prefer personal git repos |
-| `~/nexos-config` only | Great for users, no root-owned lockfiles, easy Git workflow | Weaker appliance/installer story; more user-specific setup |
-| Both, with `NEX_FLAKE` | Best compatibility and migration path; supports installer and personal repos | Slightly more documentation and CLI resolution logic |
-
-This scaffold uses the third model. `/etc/nexos` is the default, exported as
-`NEX_FLAKE` via `nexos.flakePath`, and users can change that option to target a
-personal configuration repository.
+The home template uses the same flake-parts + import-tree layout as the
+installed baseline. Set `nexos.flakePath` to point `nex` at your personal repo
+when you outgrow `/etc/nexos`.
 
 ## Development
 

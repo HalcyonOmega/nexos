@@ -61,60 +61,9 @@ in
             pkgs.qemu
           ];
 
-          environment.etc."nexos/flake.nix".text = ''
-            {
-              description = "Installed Nexos system";
-
-              inputs = {
-                nexos.url = "path:/etc/nexos/source";
-                nexpkgs.follows = "nexos/nexpkgs";
-                nixpkgs.follows = "nexpkgs";
-              };
-
-              outputs =
-                { self, nexos, ... }@inputs:
-                {
-                  nexosConfigurations.vm = nexos.lib.nexosSystem {
-                    system = "x86_64-linux";
-                    specialArgs = { inherit inputs; };
-                    modules = [
-                      ./hardware-configuration.nix
-                      ./configuration.nix
-                    ];
-                  };
-
-                  nixosConfigurations.vm = self.nexosConfigurations.vm;
-                };
-            }
-          '';
-
-          environment.etc."nexos/source".source = self;
-
-          environment.etc."nexos/configuration.nix".text = ''
-            { lib, ... }:
-
-            {
-              networking.hostName = "nexos-vm";
-              networking.networkmanager.enable = lib.mkDefault true;
-
-              users.users.nexos = {
-                isNormalUser = true;
-                initialPassword = "password";
-                extraGroups = [
-                  "networkmanager"
-                  "wheel"
-                ];
-              };
-
-              nexos = {
-                release = "unstable";
-                # Exported as NEX_FLAKE for nex edit and other config-aware commands.
-                flakePath = "/etc/nexos";
-              };
-
-              system.stateVersion = lib.mkDefault "25.05";
-            }
-          '';
+          environment.etc."nexos" = {
+            source = "${self}/templates/system";
+          };
 
           services.getty.helpLine = lib.mkForce ''
             The "nexos" account has password "password". The "root" account has an empty password.
@@ -137,8 +86,9 @@ in
               mount /dev/disk/by-label/nexos /mnt
               swapon /dev/disk/by-label/swap
               nex gen-config --root /mnt
-              cp -RL /etc/nexos /mnt/etc/nexos
-              cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hardware-configuration.nix
+              cp -a /etc/nexos /mnt/etc/nexos
+              cp /mnt/etc/nixos/hardware-configuration.nix /mnt/etc/nexos/hosts/vm/hardware.nix
+              rm -rf /mnt/etc/nixos
               nex install --flake /mnt/etc/nexos#vm
 
             After reboot, log in as nexos / password and run: nex --help

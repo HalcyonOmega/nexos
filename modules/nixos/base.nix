@@ -45,6 +45,14 @@
           helix
           fastfetch
         ];
+
+        system.activationScripts.removeLegacyNixosConfig = {
+          text = ''
+            if [ -e /etc/nexos/flake.nix ] && [ -e /etc/nixos ]; then
+              rm -rf /etc/nixos
+            fi
+          '';
+        };
       };
     };
 }

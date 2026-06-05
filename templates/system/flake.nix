@@ -1,5 +1,5 @@
 {
-  description = "My Nexos system";
+  description = "Nexos system configuration";
 
   inputs = {
     nexos.url = "github:halcyonomega/nexos";
