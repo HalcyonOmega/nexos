@@ -2,12 +2,8 @@
   description = "Nexos - an opinionated NixOS-compatible distribution";
 
   inputs = {
-    # The public foundation for Nexos. This currently points at upstream nixpkgs;
-    # later it can move to a dedicated nexpkgs fork without changing user-facing
-    # templates.
-    nexpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    # Compatibility alias for tools and modules that expect an input named nixpkgs.
+    
+    nexpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs.follows = "nexpkgs";
 
     flake-parts.url = "github:hercules-ci/flake-parts";
