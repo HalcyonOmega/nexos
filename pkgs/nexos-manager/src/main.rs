@@ -9,29 +9,53 @@ use eframe::egui;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 
 const COMMANDS: &[CommandSpec] = &[
-    CommandSpec::new("Doctor", &["doctor"], "Check the Nexos command environment"),
-    CommandSpec::new("Info", &["info"], "Show generation information"),
-    CommandSpec::new("Build", &["build"], "Build the active system"),
-    CommandSpec::new("Dry Run", &["dry-run"], "Preview a system switch"),
-    CommandSpec::new("Switch", &["switch"], "Build and activate the system"),
-    CommandSpec::new("Boot", &["boot"], "Build for the next boot"),
-    CommandSpec::new("Test", &["test"], "Activate temporarily"),
-    CommandSpec::new("Rollback", &["rollback"], "Roll back one generation"),
-    CommandSpec::new("Flake", &["flake"], "Run nix flake commands"),
-    CommandSpec::new("Shell", &["shell"], "Start a shell"),
-    CommandSpec::new("Develop", &["develop"], "Start a dev shell"),
-    CommandSpec::new("Search", &["search"], "Search packages"),
-    CommandSpec::new("Package Build", &["pkg", "build"], "Build a package"),
-    CommandSpec::new("Option", &["option"], "Run nixos-option"),
-    CommandSpec::new("Version", &["version"], "Run nixos-version"),
-    CommandSpec::new("Raw Nix", &["nix"], "Run a raw nix command"),
+    CommandSpec::new(
+        "Switch",
+        &["switch"],
+        "Build and activate the system",
+        "System",
+    ),
+    CommandSpec::new("Boot", &["boot"], "Build for the next boot", "System"),
+    CommandSpec::new("Test", &["test"], "Activate temporarily", "System"),
+    CommandSpec::new("Build", &["build"], "Build the active system", "System"),
+    CommandSpec::new("Dry Run", &["dry-run"], "Preview a system switch", "System"),
+    CommandSpec::new(
+        "Rollback",
+        &["rollback"],
+        "Roll back one generation",
+        "System",
+    ),
+    CommandSpec::new(
+        "Clean",
+        &["clean"],
+        "Remove old generations and optimise the store",
+        "Maintenance",
+    ),
+    CommandSpec::new(
+        "Doctor",
+        &["doctor"],
+        "Check the Nexos command environment",
+        "Maintenance",
+    ),
+    CommandSpec::new("Info", &["info"], "Show generation information", "Maintenance"),
+    CommandSpec::new("Flake", &["flake"], "Run nix flake commands", "Tools"),
+    CommandSpec::new("Shell", &["shell"], "Start a shell", "Tools"),
+    CommandSpec::new("Develop", &["develop"], "Start a dev shell", "Tools"),
+    CommandSpec::new("Search", &["search"], "Search packages", "Tools"),
+    CommandSpec::new("Package Build", &["pkg", "build"], "Build a package", "Tools"),
+    CommandSpec::new("Option", &["option"], "Run nixos-option", "Tools"),
+    CommandSpec::new("Version", &["version"], "Run nixos-version", "Tools"),
+    CommandSpec::new("Raw Nix", &["nix"], "Run a raw nix command", "Tools"),
 ];
+
+const CATEGORIES: &[&str] = &["System", "Maintenance", "Tools"];
 
 #[derive(Clone, Copy)]
 struct CommandSpec {
     label: &'static str,
     args: &'static [&'static str],
     description: &'static str,
+    category: &'static str,
 }
 
 impl CommandSpec {
@@ -39,11 +63,13 @@ impl CommandSpec {
         label: &'static str,
         args: &'static [&'static str],
         description: &'static str,
+        category: &'static str,
     ) -> Self {
         Self {
             label,
             args,
             description,
+            category,
         }
     }
 }
@@ -101,36 +127,85 @@ impl Default for NexosManagerApp {
     }
 }
 
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(99, 155, 255);
+const SUBTLE: egui::Color32 = egui::Color32::from_rgb(140, 145, 160);
+
 impl eframe::App for NexosManagerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.collect_process_events(ctx);
 
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("Nexos Manager");
-                ui.separator();
-                if let Some(root) = &self.config_root {
-                    ui.label(format!("{} ({})", root.path.display(), root.source));
-                } else {
-                    ui.colored_label(egui::Color32::from_rgb(190, 75, 75), "config not found");
-                }
+        egui::TopBottomPanel::top("header")
+            .frame(
+                egui::Frame::side_top_panel(&ctx.style())
+                    .inner_margin(egui::Margin::symmetric(14.0, 10.0)),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new("Nexos Manager")
+                            .size(20.0)
+                            .strong()
+                            .color(ACCENT),
+                    );
+                    ui.add_space(8.0);
+                    if let Some(root) = &self.config_root {
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "{}  ·  {}",
+                                root.path.display(),
+                                root.source
+                            ))
+                            .color(SUBTLE),
+                        );
+                    } else {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(220, 100, 100),
+                            "config not found — set NEX_FLAKE or create /etc/nexos",
+                        );
+                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Open Config").clicked() {
+                            self.open_config();
+                        }
+                    });
+                });
             });
-        });
+
+        egui::TopBottomPanel::bottom("statusbar")
+            .frame(
+                egui::Frame::side_top_panel(&ctx.style())
+                    .inner_margin(egui::Margin::symmetric(14.0, 6.0)),
+            )
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if let Some(process) = &self.running {
+                        ui.spinner();
+                        ui.label(
+                            egui::RichText::new(format!("Running {}", process.title))
+                                .color(ACCENT),
+                        );
+                    } else {
+                        ui.label(egui::RichText::new(&self.last_status).color(SUBTLE));
+                    }
+                });
+            });
 
         egui::SidePanel::left("commands")
             .resizable(false)
-            .default_width(260.0)
+            .default_width(240.0)
+            .frame(
+                egui::Frame::side_top_panel(&ctx.style())
+                    .inner_margin(egui::Margin::symmetric(12.0, 12.0)),
+            )
             .show(ctx, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    if ui.button("Open Config").clicked() {
-                        self.open_config();
-                    }
-                });
+                let running = self.running.is_some();
 
-                ui.separator();
-                ui.label("Command");
+                ui.label(egui::RichText::new("RUN A COMMAND").small().color(SUBTLE));
+                ui.add_space(4.0);
 
                 egui::ComboBox::from_id_salt("selected_command")
+                    .width(ui.available_width())
                     .selected_text(COMMANDS[self.selected_command].label)
                     .show_ui(ui, |ui| {
                         for (index, command) in COMMANDS.iter().enumerate() {
@@ -139,86 +214,120 @@ impl eframe::App for NexosManagerApp {
                     });
 
                 ui.small(COMMANDS[self.selected_command].description);
-                ui.add_space(8.0);
-                ui.label("Arguments");
-                ui.text_edit_singleline(&mut self.extra_args);
+                ui.add_space(6.0);
 
-                let running = self.running.is_some();
-                if ui
-                    .add_enabled(!running, egui::Button::new("Run Command"))
-                    .clicked()
-                {
-                    self.run_selected_command();
-                }
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.extra_args)
+                        .hint_text("Extra arguments")
+                        .desired_width(f32::INFINITY),
+                );
+                ui.add_space(6.0);
 
-                if ui
-                    .add_enabled(running, egui::Button::new("Stop Command"))
-                    .clicked()
-                {
-                    if let Some(process) = &self.running {
-                        let _ = process.tx.send(ProcessInput::Stop);
+                ui.vertical_centered_justified(|ui| {
+                    if ui
+                        .add_enabled(
+                            !running,
+                            egui::Button::new(egui::RichText::new("Run").strong())
+                                .fill(ACCENT.linear_multiply(0.25)),
+                        )
+                        .clicked()
+                    {
+                        self.run_selected_command();
                     }
-                }
 
+                    if ui.add_enabled(running, egui::Button::new("Stop")).clicked() {
+                        if let Some(process) = &self.running {
+                            let _ = process.tx.send(ProcessInput::Stop);
+                        }
+                    }
+                });
+
+                ui.add_space(10.0);
                 ui.separator();
-                ui.label("Quick Commands");
+
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    for (index, command) in COMMANDS.iter().enumerate() {
-                        if ui
-                            .add_enabled(!running, egui::Button::new(command.label))
-                            .on_hover_text(command.description)
-                            .clicked()
-                        {
-                            self.selected_command = index;
-                            self.extra_args.clear();
-                            self.run_selected_command();
+                    for category in CATEGORIES {
+                        ui.add_space(8.0);
+                        ui.label(
+                            egui::RichText::new(category.to_uppercase())
+                                .small()
+                                .color(SUBTLE),
+                        );
+                        ui.add_space(2.0);
+
+                        for (index, command) in COMMANDS.iter().enumerate() {
+                            if command.category != *category {
+                                continue;
+                            }
+
+                            ui.vertical_centered_justified(|ui| {
+                                if ui
+                                    .add_enabled(!running, egui::Button::new(command.label))
+                                    .on_hover_text(command.description)
+                                    .clicked()
+                                {
+                                    self.selected_command = index;
+                                    self.extra_args.clear();
+                                    self.run_selected_command();
+                                }
+                            });
                         }
                     }
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(&self.last_status);
-                if let Some(process) = &self.running {
-                    ui.separator();
-                    ui.label(format!("running: {}", process.title));
-                }
-            });
-            ui.separator();
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::central_panel(&ctx.style())
+                    .inner_margin(egui::Margin::symmetric(12.0, 10.0)),
+            )
+            .show(ctx, |ui| {
+                let input_height = 34.0;
+                let output_height = (ui.available_height() - input_height).max(120.0);
 
-            egui::ScrollArea::vertical()
-                .stick_to_bottom(true)
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    ui.add(
-                        egui::TextEdit::multiline(&mut self.output)
-                            .font(egui::TextStyle::Monospace)
-                            .desired_rows(24)
-                            .lock_focus(true)
-                            .desired_width(f32::INFINITY),
+                egui::Frame::none()
+                    .fill(egui::Color32::from_rgb(16, 18, 24))
+                    .rounding(egui::Rounding::same(6.0))
+                    .inner_margin(egui::Margin::same(8.0))
+                    .show(ui, |ui| {
+                        ui.set_min_height(output_height);
+                        ui.set_max_height(output_height);
+                        egui::ScrollArea::vertical()
+                            .stick_to_bottom(true)
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut self.output)
+                                        .font(egui::TextStyle::Monospace)
+                                        .frame(false)
+                                        .lock_focus(true)
+                                        .desired_width(f32::INFINITY)
+                                        .desired_rows(24),
+                                );
+                            });
+                    });
+
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    let send_width = 60.0;
+                    let response = ui.add_enabled(
+                        self.running.is_some(),
+                        egui::TextEdit::singleline(&mut self.input)
+                            .hint_text("Send input to the running command")
+                            .desired_width(ui.available_width() - send_width - 8.0),
                     );
+
+                    let send = ui
+                        .add_enabled(self.running.is_some(), egui::Button::new("Send"))
+                        .clicked()
+                        || (response.lost_focus()
+                            && ui.input(|input| input.key_pressed(egui::Key::Enter)));
+
+                    if send {
+                        self.send_input();
+                    }
                 });
-
-            ui.separator();
-            ui.horizontal(|ui| {
-                let response = ui.add_enabled(
-                    self.running.is_some(),
-                    egui::TextEdit::singleline(&mut self.input)
-                        .hint_text("Send input to the running command"),
-                );
-
-                let send = ui
-                    .add_enabled(self.running.is_some(), egui::Button::new("Send"))
-                    .clicked()
-                    || (response.lost_focus()
-                        && ui.input(|input| input.key_pressed(egui::Key::Enter)));
-
-                if send {
-                    self.send_input();
-                }
             });
-        });
     }
 }
 
@@ -483,10 +592,25 @@ fn expand_home(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
+fn apply_style(ctx: &egui::Context) {
+    ctx.set_visuals(egui::Visuals::dark());
+    ctx.style_mut(|style| {
+        style.spacing.item_spacing = egui::vec2(8.0, 6.0);
+        style.spacing.button_padding = egui::vec2(10.0, 5.0);
+        style.visuals.widgets.inactive.rounding = egui::Rounding::same(5.0);
+        style.visuals.widgets.hovered.rounding = egui::Rounding::same(5.0);
+        style.visuals.widgets.active.rounding = egui::Rounding::same(5.0);
+        style.visuals.selection.bg_fill = ACCENT.linear_multiply(0.35);
+        style.visuals.hyperlink_color = ACCENT;
+    });
+}
+
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([960.0, 640.0])
+            .with_app_id("nexos-manager")
+            .with_title("Nexos Manager")
+            .with_inner_size([1000.0, 660.0])
             .with_min_inner_size([760.0, 520.0]),
         ..Default::default()
     };
@@ -494,6 +618,9 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Nexos Manager",
         options,
-        Box::new(|_cc| Ok(Box::<NexosManagerApp>::default())),
+        Box::new(|cc| {
+            apply_style(&cc.egui_ctx);
+            Ok(Box::<NexosManagerApp>::default())
+        }),
     )
 }

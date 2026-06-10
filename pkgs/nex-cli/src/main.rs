@@ -29,6 +29,7 @@ fn main() -> ExitCode {
         "switch" | "boot" | "test" | "build" | "rollback" | "info" => {
             exec_os_command(command.as_ref(), rest)
         }
+        "clean" | "gc" => exec_clean(rest),
         "pkg" | "package" => exec_package_command(rest),
         "nix" | "raw" => exec_raw_nix(rest),
         "shell" => exec_shell(rest),
@@ -93,6 +94,41 @@ fn exec_os_command(command: &str, args: &[OsString]) -> ExitCode {
     }
 
     exec_passthrough("nh", &os_args)
+}
+
+fn exec_clean(args: &[OsString]) -> ExitCode {
+    let mut clean_args = vec![OsString::from("clean"), OsString::from("all")];
+    clean_args.extend_from_slice(args);
+
+    println!("nex clean: removing old generations (nh clean all)");
+    let clean_status = match Command::new("nh").args(&clean_args).status() {
+        Ok(status) => status,
+        Err(error) => {
+            eprintln!("nex: failed to execute nh: {error}");
+            return ExitCode::from(127);
+        }
+    };
+
+    if !clean_status.success() {
+        eprintln!("nex: nh clean failed; skipping store optimisation");
+        return ExitCode::from(clean_status.code().unwrap_or(1).clamp(0, 255) as u8);
+    }
+
+    println!("nex clean: optimising the nix store (nix-store --optimise)");
+    match Command::new("nix-store").arg("--optimise").status() {
+        Ok(status) if status.success() => {
+            println!("nex clean: done");
+            ExitCode::SUCCESS
+        }
+        Ok(status) => {
+            eprintln!("nex: nix-store --optimise failed");
+            ExitCode::from(status.code().unwrap_or(1).clamp(0, 255) as u8)
+        }
+        Err(error) => {
+            eprintln!("nex: failed to execute nix-store: {error}");
+            ExitCode::from(127)
+        }
+    }
 }
 
 fn exec_dry_run(args: &[OsString]) -> ExitCode {
@@ -285,6 +321,7 @@ Short OS lifecycle commands:
   nex info                  Show system generation information
   nex list                  Alias for nex info
   nex dry-run               Preview the default Nexos system switch
+  nex clean [args...]       Remove old generations (nh clean all) and optimise the store
 
 Compatibility helpers:
   nex install [args...]     Install Nexos to a mounted target

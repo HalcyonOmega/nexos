@@ -19,7 +19,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "nexos-manager";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = lib.cleanSource ./.;
   cargoLock.lockFile = ./Cargo.lock;
@@ -49,7 +49,25 @@ rustPlatform.buildRustPackage {
           nix
           xdg-utils
         ]
+      } \
+      --prefix LD_LIBRARY_PATH : ${
+        # winit/glutin load these via dlopen at runtime, so linking alone
+        # is not enough; without this the app aborts with
+        # "Failed to initialize any backend" outside of a matching profile.
+        lib.makeLibraryPath [
+          fontconfig
+          libGL
+          libX11
+          libXcursor
+          libXi
+          libXrandr
+          libxkbcommon
+          wayland
+        ]
       }
+
+    install -Dm644 ${./nexos-manager.desktop} \
+      "$out/share/applications/nexos-manager.desktop"
   '';
 
   meta = {

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Nexos Manager
+GenericName=System Manager
+Comment=Manage your Nexos system: switch, build, clean, and inspect generations
+Exec=nexos-manager
+Icon=preferences-system
+Terminal=false
+Categories=System;Settings;
+Keywords=nix;nixos;nexos;rebuild;switch;generations;
