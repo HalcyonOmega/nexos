@@ -39,6 +39,49 @@ Generic `nix` remains available for users who rely on it directly, but Nexos
 docs should prefer `nex` wherever the behavior is intended to be branded and
 ordinary.
 
+## Graphical Manager
+
+`nexos-manager` is the graphical launcher for managing a Nexos or compatible
+NixOS system. It includes `nex` in its runtime environment, so installing the
+manager also makes the CLI available to commands launched from the GUI.
+
+From this repository:
+
+```sh
+nix run .#nexos-manager
+```
+
+From another flake-based NixOS config:
+
+```nix
+{
+  inputs.nexos.url = "github:halcyonomega/nexos";
+
+  outputs =
+    { nixpkgs, nexos, ... }:
+    {
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [
+          {
+            environment.systemPackages = [
+              nexos.packages.x86_64-linux.nex
+              nexos.packages.x86_64-linux.nexos-manager
+            ];
+
+            environment.variables.NEX_FLAKE = "/etc/nixos";
+          }
+        ];
+      };
+    };
+}
+```
+
+If you import `nexos.nixosModules.default`, both `nex` and `nexos-manager` are
+installed by default. On non-Nexos machines, set `NEX_FLAKE` to your active
+configuration directory. Without `NEX_FLAKE`, the manager tries `/etc/nexos`,
+then `/etc/nixos`.
+
 ## Installed System Baseline
 
 The Nexos ISO installs a baseline flake to `/etc/nexos` (`templates/system`):
@@ -77,6 +120,7 @@ when you outgrow `/etc/nexos`.
 ```sh
 nex flake check
 nex pkg build .#nex
+nex pkg build .#nexos-manager
 ```
 
 The flake supports `x86_64-linux` and `aarch64-linux`.

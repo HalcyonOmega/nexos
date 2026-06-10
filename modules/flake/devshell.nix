@@ -7,6 +7,7 @@
       devShells.default = pkgs.mkShell {
         packages = [
           self'.packages.nex
+          self'.packages.nexos-manager
           pkgs.deadnix
           pkgs.nh
           pkgs.nil
