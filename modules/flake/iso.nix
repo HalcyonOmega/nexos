@@ -110,7 +110,7 @@ in
 
           nexos = {
             release = "unstable";
-            flakePath = "/etc/nexos";
+            flakePath = "/etc/nexos#default";
           };
 
           environment.systemPackages = [

@@ -25,7 +25,7 @@ in
 
   nexos = {
     release = "unstable";
-    flakePath = "/etc/nexos";
+    flakePath = "/etc/nexos#default";
   };
 
   system.stateVersion = lib.mkDefault "25.05";

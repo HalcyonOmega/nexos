@@ -16,7 +16,7 @@
         ];
 
         shellHook = ''
-          export NEX_FLAKE="$PWD"
+          export NEX_FLAKE="$PWD#default"
           echo "Nexos dev shell - use: nex switch --dry"
         '';
       };

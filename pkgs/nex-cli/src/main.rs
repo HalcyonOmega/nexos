@@ -112,9 +112,7 @@ fn exec_dry_run(args: &[OsString]) -> ExitCode {
 }
 
 fn append_default_target(args: &mut Vec<OsString>) {
-    args.push(OsString::from(active_config_root()));
-    args.push(OsString::from("--hostname"));
-    args.push(OsString::from("default"));
+    args.push(OsString::from(active_flake_ref()));
 }
 
 fn uses_legacy_package_shell(args: &[OsString]) -> bool {
@@ -177,8 +175,29 @@ fn exec(mut command: Command) -> ExitCode {
     ExitCode::from(127)
 }
 
+fn active_flake_ref() -> String {
+    env::var("NEX_FLAKE").unwrap_or_else(|_| "/etc/nexos#default".into())
+}
+
 fn active_config_root() -> String {
-    env::var("NEX_FLAKE").unwrap_or_else(|_| "/etc/nexos".into())
+    flake_ref_root(&active_flake_ref())
+}
+
+fn flake_ref_root(flake_ref: &str) -> String {
+    let root = flake_ref
+        .split_once('#')
+        .map_or(flake_ref, |(root, _)| root);
+
+    if let Some(stripped) = root.strip_prefix("~/") {
+        if let Some(home) = env::var_os("HOME") {
+            return Path::new(&home)
+                .join(stripped)
+                .to_string_lossy()
+                .into_owned();
+        }
+    }
+
+    root.into()
 }
 
 fn edit(args: &[OsString]) -> ExitCode {
@@ -191,13 +210,15 @@ fn edit(args: &[OsString]) -> ExitCode {
     let config_root = active_config_root();
     if !Path::new(&config_root).is_dir() {
         eprintln!("nex: config path does not exist: {config_root}");
-        eprintln!("hint: set NEX_FLAKE to your Nexos configuration directory");
+        eprintln!("hint: set NEX_FLAKE to your Nexos flake, such as /etc/nexos#default");
         return ExitCode::from(1);
     }
 
     let mut command = Command::new("sh");
     command.arg("-c");
-    command.arg(r#"exec ${EDITOR:-vim} "${NEX_FLAKE:-/etc/nexos}""#);
+    command.arg(r#"exec ${EDITOR:-vim} "$1""#);
+    command.arg("nex-edit");
+    command.arg(&config_root);
     command.current_dir(&config_root);
     exec(command)
 }
@@ -222,14 +243,15 @@ fn doctor() -> ExitCode {
         }
     }
 
-    let config_root = active_config_root();
+    let flake_ref = active_flake_ref();
+    let config_root = flake_ref_root(&flake_ref);
     if Path::new(&config_root).is_dir() {
-        println!("ok   NEX_FLAKE      {config_root}");
+        println!("ok   NEX_FLAKE      {flake_ref}");
     } else if env::var("NEX_FLAKE").is_ok() {
-        println!("miss NEX_FLAKE      {config_root} (path does not exist)");
+        println!("miss NEX_FLAKE      {flake_ref} ({config_root} does not exist)");
         failed = true;
     } else {
-        println!("warn NEX_FLAKE      not set; using {config_root}");
+        println!("warn NEX_FLAKE      not set; using {flake_ref}");
     }
 
     if failed {

@@ -69,7 +69,7 @@ From another flake-based NixOS config:
               nexos.packages.x86_64-linux.nexos-manager
             ];
 
-            environment.variables.NEX_FLAKE = "/etc/nixos";
+            environment.sessionVariables.NEX_FLAKE = "/etc/nixos#example";
           }
         ];
       };
@@ -79,8 +79,8 @@ From another flake-based NixOS config:
 
 If you import `nexos.nixosModules.default`, both `nex` and `nexos-manager` are
 installed by default. On non-Nexos machines, set `NEX_FLAKE` to your active
-configuration directory. Without `NEX_FLAKE`, the manager tries `/etc/nexos`,
-then `/etc/nixos`.
+flake reference, such as `/etc/nixos#example`. Without `NEX_FLAKE`, the
+manager tries `/etc/nexos`, then `/etc/nixos`.
 
 ## Installed System Baseline
 
@@ -112,8 +112,8 @@ nex switch
 ```
 
 The home template uses the same flake-parts + import-tree layout as the
-installed baseline. Set `nexos.flakePath` to point `nex` at your personal repo
-when you outgrow `/etc/nexos`.
+installed baseline. Set `nexos.flakePath` to a flake reference such as
+`~/nixos#halcyon` when you outgrow `/etc/nexos`.
 
 ## Development
 

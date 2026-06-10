@@ -1,6 +1,11 @@
 {
   flake.nixosModules.base =
-    { config, lib, pkgs, ... }:
+    {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
     let
       cfg = config.nexos;
     in
@@ -10,8 +15,8 @@
 
         flakePath = lib.mkOption {
           type = lib.types.str;
-          default = "/etc/nexos";
-          description = "Default flake path used by Nexos system commands.";
+          default = "/etc/nexos#default";
+          description = "Default flake reference used by Nexos system commands.";
         };
 
         release = lib.mkOption {
@@ -35,7 +40,7 @@
 
         environment.etc."nexos-release".text = "Nexos ${cfg.release}\n";
 
-        environment.variables = {
+        environment.sessionVariables = {
           NEX_FLAKE = cfg.flakePath;
         };
 

@@ -32,9 +32,9 @@ flake-parts, import-tree, and `nexos.lib.nexosSystem`.
 - `nex flake` for flake workflows
 - `nex edit` to open the active config directory
 
-The default system path is `/etc/nexos`, exported as `NEX_FLAKE` through
-`nexos.flakePath`. Change that option when you want `nex` to target this
-repository instead.
+The default system flake is `/etc/nexos#example`, exported as `NEX_FLAKE`
+through `nexos.flakePath`. Change that option when you want `nex` to target
+this repository instead.
 
 Before `nex` is installed system-wide:
 
